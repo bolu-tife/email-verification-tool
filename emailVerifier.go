@@ -13,7 +13,8 @@ import (
 
 var disposableList = make(map[string]struct{}, 3500)
 
-var disposableErrorMessage = errors.New("disposable mail")
+var errDisposable = errors.New("disposable mail")
+var errInvalidPattern = errors.New("invalid email pattern")
 
 func init() {
 	f, _ := os.Open("disposable_email_blocklist.txt")
@@ -33,20 +34,18 @@ func EmailVerificationProcess(email string) (*EmailVerifier, error) {
 	emailVer.EmailParser()
 
 	if emailVer.isDisposableEmail() {
-		return emailVer, disposableErrorMessage
+		return emailVer, errDisposable
 	}
 
-	_, err := emailVer.EmailDomainVerifier()
+	mx, err := emailVer.EmailDomainVerifier()
 	if err != nil {
 		return emailVer, err
 	}
 
-	fmt.Println("here")
-	// err = emailVer.EmailSMPTVerifier(mx.Host)
-	// fmt.Println(err)
-	// if err != nil {
-	// 	return emailVer, err
-	// }
+	err = emailVer.EmailSMPTVerifier(mx.Host)
+	if err != nil {
+		return emailVer, err
+	}
 
 	return emailVer, nil
 }
@@ -58,13 +57,13 @@ func (ev *EmailVerifier) isDisposableEmail() (disposable bool) {
 
 func (ev *EmailVerifier) EmailFormatVerifier() error {
 	if len(ev.Email) > 254 {
-		return fmt.Errorf("invalid email pattern")
+		return errInvalidPattern
 	}
 
 	pattern := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
 	re := regexp.MustCompile(pattern)
 	if !re.MatchString(ev.Email) {
-		return fmt.Errorf("invalid email pattern")
+		return errInvalidPattern
 	}
 
 	return nil
@@ -121,7 +120,7 @@ func (ev *EmailVerifier) NewEmailStatus(err error) *EmailStatus {
 		Email:      ev.Email,
 		Domain:     ev.Domain,
 		UserName:   ev.UserName,
-		Disposable: err == disposableErrorMessage,
+		Disposable: err == errDisposable,
 		Valid:      err == nil,
 		Error:      err.Error(),
 	}

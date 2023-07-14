@@ -9,10 +9,12 @@ type EmailVerifier struct {
 }
 
 type EmailStatus struct {
-	Email    string
-	Domain   string
-	UserName string
-	Valid    bool
+	Email      string
+	Domain     string
+	UserName   string
+	Disposable bool
+	Valid      bool
+	Error      string
 }
 type Config struct {
 	Port        string `default:"3000"`

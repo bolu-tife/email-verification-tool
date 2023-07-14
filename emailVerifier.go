@@ -1,12 +1,27 @@
 package main
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"net"
 	"net/smtp"
+	"os"
 	"regexp"
 	"strings"
 )
+
+var disposableList = make(map[string]struct{}, 3500)
+
+var disposableErrorMessage = errors.New("disposable mail")
+
+func init() {
+	f, _ := os.Open("disposable_email_blocklist.txt")
+	for scanner := bufio.NewScanner(f); scanner.Scan(); {
+		disposableList[scanner.Text()] = struct{}{}
+	}
+	f.Close()
+}
 
 func EmailVerificationProcess(email string) (*EmailVerifier, error) {
 	emailVer := NewEmailVerifier(email)
@@ -17,25 +32,41 @@ func EmailVerificationProcess(email string) (*EmailVerifier, error) {
 
 	emailVer.EmailParser()
 
-	mx, err := emailVer.EmailDomainVerifier()
+	if emailVer.isDisposableEmail() {
+		return emailVer, disposableErrorMessage
+	}
+
+	_, err := emailVer.EmailDomainVerifier()
 	if err != nil {
 		return emailVer, err
 	}
 
-	err = emailVer.EmailSMPTVerifier(mx.Host)
-	if err != nil {
-		return emailVer, err
-	}
+	fmt.Println("here")
+	// err = emailVer.EmailSMPTVerifier(mx.Host)
+	// fmt.Println(err)
+	// if err != nil {
+	// 	return emailVer, err
+	// }
 
 	return emailVer, nil
 }
 
+func (ev *EmailVerifier) isDisposableEmail() (disposable bool) {
+	_, disposable = disposableList[strings.ToLower(ev.Domain)]
+	return
+}
+
 func (ev *EmailVerifier) EmailFormatVerifier() error {
+	if len(ev.Email) > 254 {
+		return fmt.Errorf("invalid email pattern")
+	}
+
 	pattern := `^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`
 	re := regexp.MustCompile(pattern)
 	if !re.MatchString(ev.Email) {
-		return fmt.Errorf("invalid pattern")
+		return fmt.Errorf("invalid email pattern")
 	}
+
 	return nil
 }
 
@@ -85,11 +116,13 @@ func NewEmailVerifier(email string) *EmailVerifier {
 	}
 }
 
-func (ev *EmailVerifier) NewEmailStatus(valid bool) *EmailStatus {
+func (ev *EmailVerifier) NewEmailStatus(err error) *EmailStatus {
 	return &EmailStatus{
-		Email:    ev.Email,
-		Domain:   ev.Domain,
-		UserName: ev.UserName,
-		Valid:    valid,
+		Email:      ev.Email,
+		Domain:     ev.Domain,
+		UserName:   ev.UserName,
+		Disposable: err == disposableErrorMessage,
+		Valid:      err == nil,
+		Error:      err.Error(),
 	}
 }

@@ -11,7 +11,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{Host}}/?email=name@example.com",
+					"raw": "{{Host}}/?email=boluomosowon@asdasd.ru",
 					"host": [
 						"{{Host}}"
 					],
@@ -21,7 +21,7 @@
 					"query": [
 						{
 							"key": "email",
-							"value": "name@example.com"
+							"value": "boluomosowon@asdasd.ru"
 						}
 					]
 				},

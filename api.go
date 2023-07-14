@@ -40,7 +40,7 @@ func (s *APIServer) handleEmailVerificationCheck(w http.ResponseWriter, r *http.
 
 	emailVer, err := EmailVerificationProcess(email)
 
-	emailStatus := emailVer.NewEmailStatus(err == nil)
+	emailStatus := emailVer.NewEmailStatus(err)
 
 	return WriteJSON(w, http.StatusOK, emailStatus)
 }
